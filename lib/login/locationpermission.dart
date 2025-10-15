@@ -16,7 +16,6 @@ class LocationPermission extends StatefulWidget {
 class _LocationPermissionState extends State<LocationPermission> {
 
   Future<void> requestPermissions() async {
-    // Request all permissions
     Map<Permission, PermissionStatus> statuses = await [
       Permission.sms,
       Permission.location,
@@ -26,7 +25,7 @@ class _LocationPermissionState extends State<LocationPermission> {
     if (allGranted) {
       _navigateToNextScreen();
     } else {
-      Send.message(context, "Please give all Permission to form", false);
+      Send.message(context, "Please give all Permission to from Setting", false);
     }
   }
 

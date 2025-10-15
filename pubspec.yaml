@@ -54,7 +54,10 @@ dependencies:
   carousel_slider: ^5.1.1
   omni_datetime_picker: ^2.3.1
   intl: ^0.20.2
-  sidebarx: ^0.17.2
+  shimmer: ^3.0.0
+  dio: ^5.9.0
+  step_progress: ^2.7.0
+  image_picker: ^1.2.0
 
 
 dev_dependencies:

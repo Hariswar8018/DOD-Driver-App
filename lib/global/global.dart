@@ -8,7 +8,44 @@ class Global{
   static Color bg = Colors.black;
   static Color grey = Color(0xffF3F4F6);
 
- static List<String> places = [
+  static Widget con(double w , TextEditingController _controller, )=>Container(
+    width: w-40,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: Colors.grey.shade300, width: 2),
+    ),
+    alignment: Alignment.center,
+    child: TextField(
+      controller: _controller,
+      keyboardType: TextInputType.name,
+      textAlign: TextAlign.left,
+      maxLength: 10,
+      style: TextStyle(
+          fontSize: 20,
+          color: Colors.black,
+          fontWeight: FontWeight.w800
+      ),
+      decoration: InputDecoration(
+        border: InputBorder.none,
+        counterText: "",
+        prefixText: "    +91   ",
+        prefixStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.w800
+        ),
+        hintText: "Enter your 10 digits Number",
+        hintStyle: TextStyle(
+          fontSize: 14,
+          color: Colors.grey,
+        ),
+      ),
+    ),
+  );
+
+
+  static List<String> places = [
     "Ahmedabad Junction Railway Station, Kalupur Railway Station Road, Sakar Bazzar, Kalupur, Ahmedabad, Gujarat 380002" ,  // main railway station :contentReference[oaicite:0]{index=0}
     "Divisional Railway Manager's Office, Amdupura, Naroda Road, Ahmedabad, Gujarat 382345" ,  // Western Railway administrative office :contentReference[oaicite:1]{index=1}
     "Gheekanta Metro Station, Old City, Gheekanta, Bhadra, Ahmedabad, Gujarat 380001" ,  // metro station on Blue Line :contentReference[oaicite:2]{index=2}

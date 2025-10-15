@@ -80,7 +80,7 @@ class _OnboardingState extends State<Onboarding> {
             SizedBox(height: 3,),
             Text("Drive and Earn with us on DOD. We provide Daily Payments, Travel Insurance and Zero Charges",
               style: TextStyle(color: Colors.white),),
-            SizedBox(height: 45,),
+            SizedBox(height: 90,),
             CircleAvatar(
               backgroundColor: Colors.white,
               radius: 35,

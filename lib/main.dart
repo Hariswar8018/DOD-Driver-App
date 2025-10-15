@@ -2,6 +2,7 @@
 import 'dart:async';
 
 
+import 'package:dod_partner/home/navigation.dart' show Navigation;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -47,21 +48,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
 
-  void listenToLogin() {
-    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
-      if (user != null) {
-        print("User logged in: ${user.uid}");
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>LocationPermission()));
-      } else {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>Onboarding()));
-        print("User logged out");
-      }
-    });
-  }
-
-
   void initState(){
-    listenToLogin();
     if(FirebaseAuth.instance.currentUser==null){
       Timer(Duration(seconds: 3),(){
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>Onboarding()));
