@@ -84,8 +84,7 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthNeedsRegistration());
       }
       else {
-        emit(AuthFailure(
-            "Login failed: ${response.statusCode} - ${response.statusMessage}"));
+        emit(AuthFailure("Login failed: ${response.statusCode} - ${response.statusMessage}"));
       }
     } catch (e) {
       emit(AuthFailure("Exception: $e"));
@@ -138,7 +137,7 @@ class _NavigationState extends State<Navigation> {
   Widget build(BuildContext context){
     return Scaffold(
       body: BlocProvider(
-        create: (_) => AuthCubit()..login(), // automatically call login
+        create: (_) => AuthCubit()..login(),
         child: BlocConsumer<AuthCubit, AuthState>(
           listener: (context, state) {
             if (state is AuthSuccess) {
@@ -146,20 +145,22 @@ class _NavigationState extends State<Navigation> {
             } else if (state is AuthNeedsRegistration) {
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>CreateSeller()));
             } else if (state is AuthFailure) {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>CreateSeller()));
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.error)),
-              );
+              errormessage=state.error;
+              errortitle="Error 500 Issue !";
+              Send.message(context, "505 Error ( Backend Unintended Issue ). Sending you to Driver Creation Page in 5 seconds !", false);
+              Future.delayed(const Duration(seconds: 5), () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => CreateSeller()),
+                );
+              });
             }
           },
           builder: (context, state) {
             if (state is AuthLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return LoadingScaffold();
             }
-            return Scaffold(
-              backgroundColor: Colors.white,
-            ); // your login button or placeholder
+            return error();
           },
         ),
       ),
@@ -205,143 +206,25 @@ class LoadingScaffold extends StatelessWidget {
           baseColor: Colors.grey.shade300,
           highlightColor: Colors.grey.shade100,
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Center(
                 child: Container(
                   width: MediaQuery.of(context).size.width-15,
-                  height: 290,
+                  height: MediaQuery.of(context).size.height-160,
                   color: Colors.white,
                 ),
               ),
-              SizedBox(height: 10,),
               Center(
                 child: Container(
                   width: MediaQuery.of(context).size.width-15,
-                  height: 110,
+                  height: 50,
                   color: Colors.white,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Fake thumbnail
-                    Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 12),
-                    // Fake text blocks
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(height: 16, width: double.infinity, color: Colors.white),
-                          const SizedBox(height: 8),
-                          Container(height: 16, width: 150, color: Colors.white),
-                          const SizedBox(height: 8),
-                          Container(height: 16, width: 30, color: Colors.white),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Fake thumbnail
-                    Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 12),
-                    // Fake text blocks
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(height: 16, width: double.infinity, color: Colors.white),
-                          const SizedBox(height: 8),
-                          Container(height: 16, width: 150, color: Colors.white),
-                          const SizedBox(height: 8),
-                          Container(height: 16, width: 30, color: Colors.white),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
-
-
             ],
           )
-      ),
-      bottomNavigationBar: BottomAppBar(
-        shape: CircularNotchedRectangle(),
-        notchMargin: 4, color: Colors.white, surfaceTintColor: Colors.white,
-        shadowColor:  Colors.white,
-        child: Container(
-          height: 20, color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              MaterialButton(
-                  minWidth: 25, onPressed: (){
-                currentTab = 0;
-              },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        CupertinoIcons.home,
-                        color: currentTab == 0? Colors.black : Colors.grey, size: 23,
-                      ),
-                      Text("Home", style: TextStyle(color: currentTab == 0?  Colors.black :Colors.grey, fontSize: 12))
-                    ],
-                  )
-              ),
-              MaterialButton(
-                  minWidth: 25, onPressed: (){
-
-                currentTab = 3;
-
-              },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.two_wheeler,
-                        color: currentTab == 3? Colors.black:Colors.grey, size: 23,
-                      ),
-                      Text("Drivers", style: TextStyle(color: currentTab == 3? Colors.black:Colors.grey, fontSize: 12))
-                    ],
-                  )
-              ),
-              MaterialButton(
-                  minWidth: 25, onPressed: (){
-
-                currentTab = 4;
-              },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        CupertinoIcons.person,
-                        color: currentTab == 4? Colors.black:Colors.grey, size: 23,
-                      ),
-                      Text("User", style: TextStyle(color: currentTab == 4? Colors.black:Colors.grey, fontSize: 12))
-                    ],
-                  )
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

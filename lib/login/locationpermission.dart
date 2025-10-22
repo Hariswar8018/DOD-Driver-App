@@ -38,11 +38,11 @@ class _LocationPermissionState extends State<LocationPermission> {
     super.dispose();
   }
 
-  @override
+  /* @override
   void initState(){
     requestPermissions();
     startTimer();
-  }
+  } */
   Future<void> startTimer() async {
     var status = await Permission.locationWhenInUse.status;
     var status1 = await Permission.sms.status;
@@ -66,8 +66,12 @@ class _LocationPermissionState extends State<LocationPermission> {
     );
   }
 
+  @override
+  Widget build(BuildContext context){
+    return Navigation();
+  }
 
-
+  /*
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,5 +125,5 @@ class _LocationPermissionState extends State<LocationPermission> {
         ],
       ),
     );
-  }
+  } */
 }

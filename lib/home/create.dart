@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/main.dart';
 import 'package:step_progress/step_progress.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../global/global.dart';
@@ -70,16 +71,62 @@ class _CreateSellerState extends State<CreateSeller> {
                   child: Text("Create Driver Profile",style: TextStyle(fontWeight: FontWeight.w800,fontSize: 22,color: Colors.white),),
                 ),
                 SizedBox(height: 10,),
-                Row(
-                  children: [
-                    SizedBox(width: 10,),
-                    Icon(Icons.support_agent,color: Colors.white,),SizedBox(width: 5,),
-                    Text(" Support at : +91-7978097489",style: TextStyle(color: Colors.white),),SizedBox(width: 5,),
-                    Icon(Icons.keyboard_arrow_down_outlined,color: Colors.white,),
-                    SizedBox(width: 10,),
-                    progress?CircularProgressIndicator():SizedBox(),
-                    SizedBox(width: 5,),
-                  ],
+                InkWell(
+                  onTap: () async {
+                    final Uri _url = Uri.parse('tel:+918269669272');
+                    if (!await launchUrl(_url)) {
+                      throw Exception('Could not launch $_url');
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      SizedBox(width: 10,),
+                      Icon(Icons.support_agent,color: Colors.white,),SizedBox(width: 5,),
+                      Text(" Support at : +91-8269669272",style: TextStyle(color: Colors.white),),SizedBox(width: 5,),
+                      Icon(Icons.keyboard_arrow_down_outlined,color: Colors.white,),
+                      SizedBox(width: 10,),
+                      progress?CircularProgressIndicator():SizedBox(),
+                      SizedBox(width: 5,),
+                      Spacer(),
+                      InkWell(
+                          onTap: ()async {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  title: Text("Log Out", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  content: Text("You sure to Log Out ? Your changes may not be saved"),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text("Cancel", style: TextStyle(color: Colors.blue)),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      onPressed: () async {
+                                        await FirebaseAuth.instance.signOut();
+                                        await FirebaseAuth.instance.signOut();
+                                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>np.MyHomePage(title: "",)));
+                                      },
+                                      child: const Text("Confirm",style: TextStyle(color: Colors.white),),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                              },
+                          child: Icon(Icons.logout,color: Colors.white,)),SizedBox(width: 10,),
+                    ],
+                  ),
                 ),
                 SizedBox(height: 14,)
               ],
