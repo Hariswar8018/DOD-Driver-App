@@ -1,19 +1,21 @@
-import 'ordermodel.dart';
 
-class BookingsResponse {
+
+import 'my_ordermodel.dart' show OrderModel;
+
+class MyBookingsResponse {
   final bool success;
   final String message;
   final List<OrderModel> bookings;
 
-  BookingsResponse({
+  MyBookingsResponse({
     required this.success,
     required this.message,
     required this.bookings,
   });
 
-  factory BookingsResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as List? ?? [];
-    return BookingsResponse(
+  factory MyBookingsResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data']?['data'] as List? ?? [];
+    return MyBookingsResponse(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
       bookings: data.map((e) => OrderModel.fromJson(e)).toList(),

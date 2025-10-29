@@ -1,6 +1,5 @@
 
 
-
 class OrderModel {
   final int id;
   final int userId;
@@ -25,6 +24,7 @@ class OrderModel {
   final String status;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final User user;
 
   OrderModel({
     required this.id,
@@ -50,6 +50,7 @@ class OrderModel {
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    required this.user,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -77,6 +78,7 @@ class OrderModel {
       status: json['status'] ?? '',
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updated_at'] ?? ''),
+      user: User.fromJson(json['user'] ?? {}),
     );
   }
 
@@ -89,7 +91,6 @@ class OrderModel {
   static double _parseDouble(dynamic value) =>
       value is double ? value : double.tryParse(value.toString()) ?? 0.0;
 }
-
 class User {
   final int id;
   final String name;

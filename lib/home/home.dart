@@ -3,6 +3,8 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
+import 'package:dod_partner/booking/booking_function.dart';
+import 'package:dod_partner/booking/my_rides.dart';
 import 'package:dod_partner/global/global.dart';
 import 'package:dod_partner/second_pages/say_no.dart';
 import 'package:dod_partner/second_pages/user_screen.dart';
@@ -16,9 +18,12 @@ import 'package:visibility_detector/visibility_detector.dart'
     show VisibilityDetector;
 
 import '../api.dart';
+import '../booking/full.dart';
 import '../login/bloc/login/view.dart';
 import '../model/booking_response.dart';
+import '../model/mybooking.dart';
 import '../model/ordermodel.dart' show OrderModel;
+import '../model/my_ordermodel.dart' as mine;
 
 class LatLongModel {
   final double latitude;
@@ -58,7 +63,43 @@ class _HomeState extends State<Home> {
 
   double size = 31;
 
-  Future<void> gets() async {
+  Future<void> getmyorders() async {
+    final Dio dio = Dio(
+      BaseOptions(validateStatus: (status) => status != null && status < 500),
+    );
+    try {
+      final response = await dio.get(
+        Api.apiurl + "user-bookings",
+        options: Options(
+          headers: {"Authorization": "Bearer ${UserModel.token}"},
+        ),
+      );
+      if (response.statusCode == 200) {
+        print(response.data);
+        print("----------------------------->");
+        print(UserModel.token);
+        myorders=[];
+        final bookingsResponse = MyBookingsResponse.fromJson(response.data);
+        print(bookingsResponse.bookings);
+        print("✅ Total bookings: ${bookingsResponse.bookings.length}");
+        for (var order in bookingsResponse.bookings) {
+          print(
+            "📦 Booking ID: ${order.id}, Status: ${order.status}, User: ${order.user.name}",
+          );
+          myorders.add(order);
+        }
+
+      } else {
+        print("❌ Error: ${response.statusMessage}");
+      }
+    } catch (e) {
+      print("Error during API call: $e");
+    }
+  }
+  List<mine.OrderModel> myorders = [];
+
+
+  Future<void> getupcoming() async {
     final Dio dio = Dio(
       BaseOptions(validateStatus: (status) => status != null && status < 500),
     );
@@ -73,16 +114,19 @@ class _HomeState extends State<Home> {
         print(response.data);
         print("----------------------------->");
         print(UserModel.token);
+        print("dmscskc");
         final bookingsResponse = BookingsResponse.fromJson(response.data);
+        print("jcxjckx ");
         print(bookingsResponse.bookings);
+        orders=[];
         print("✅ Total bookings: ${bookingsResponse.bookings.length}");
         for (var order in bookingsResponse.bookings) {
           print(
-            "📦 Booking ID: ${order.id}, Status: ${order.status}, User: ${order.user.name}",
+            "📦 Booking ID: ${order.id}, Status: ${order.status}, User: ${order.pickupLongitude}",
           );
           orders.add(order);
         }
-
+        find(orders);
       } else {
         print("❌ Error: ${response.statusMessage}");
       }
@@ -90,7 +134,60 @@ class _HomeState extends State<Home> {
       print("Error during API call: $e");
     }
   }
+  
+  double price = 0;
+  
+  void find(List<OrderModel> or){
+    double amount = 0;
+    for( var i in or ){
+      amount = amount + i.amount;
+    }
+    setState(() {
+      price = amount;
+    });
+  }
+  int review = 1;
+  Widget f(double w, int yes)=>InkWell(
+    onTap: (){
+      setState(() {
+        review=yes;
+        on();
+      });
+      print(review);
+    },
+    child: Container(
+      width: w/2-20,
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: yes==review?Colors.white:Colors.black,
+      ),
+      child: Center(
+        child: Text(yiop(yes),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: yes==review?Colors.black:Colors.white)),
+      ),
+    ),
+  );
 
+  String yiop(int y){
+    if(y==0){
+      return "All Trips";
+    }else if(y==1){
+      return "My Trips";
+    }else {
+      return "Invites";
+    }
+  }
+  void on(){
+    if(review==0){
+      getupcoming();
+    }else {
+      getmyorders();
+    }
+  }
   List<OrderModel> orders = [];
   String formattedDateTime() {
     final now = DateTime.now();
@@ -128,8 +225,7 @@ class _HomeState extends State<Home> {
               ),
               InkWell(
                 onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (_)=>Say_No(
-                      str: "My Rides", description: "You haven't Completed any Rides")));
+                  Navigator.push(context, MaterialPageRoute(builder: (_)=>MyRides()));
                 },
                 child: list(
                   Icon(Icons.car_crash_sharp, color: Colors.white, size: size),
@@ -247,7 +343,7 @@ class _HomeState extends State<Home> {
             await FirebaseAuth.instance.signOut();
           },
           child: Text(
-            "Orders Around Me",
+            review==0?"Orders Around Me":"My Trips",
             style: TextStyle(color: Colors.white),
           ),
         ),
@@ -281,6 +377,37 @@ class _HomeState extends State<Home> {
             height: h - 85,
             child: Column(
               children: [
+                SizedBox(height: 8,),
+                online?Padding(
+                  padding: const EdgeInsets.all(2.0),
+                  child: Center(
+                    child: Container(
+                        width: w-20,
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(10),
+                            // specify the radius for the top-left corner
+                            topRight: Radius.circular(10),
+                            bottomRight: Radius.circular(10),
+                            bottomLeft: Radius.circular(10),
+                            // specify the radius for the top-right corner
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8.0,right: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              f(w, 0),
+                              f(w, 1),
+                            ],
+                          ),
+                        )
+                    ),
+                  ),
+                ):SizedBox(),
                 online
                     ? Center(
                         child: Padding(
@@ -311,7 +438,7 @@ class _HomeState extends State<Home> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "0 RIDES  |   ₹0",
+                                      review==0?"${orders.length} RIDES  |   ₹${price.toStringAsFixed(1)}":"TOTAL ${myorders.length} RIDES",
                                       style: TextStyle(
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -332,16 +459,319 @@ class _HomeState extends State<Home> {
                       )
                     : SizedBox(),
                 Spacer(),
-                orders.isEmpty
+                review==0?(orders.isEmpty
+                    ? SizedBox()
+                    : Container(
+                  width: w,
+                  height: 200,
+                  child: ListView.builder(
+                    itemCount: orders.length,
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (BuildContext context, int index) {
+                      OrderModel myorder = orders[index];
+                      return VisibilityDetector(
+                        key: Key('order-$index'),
+                        onVisibilityChanged: (info) {
+                          double visiblePercentage =
+                              info.visibleFraction * 100;
+                          if (visiblePercentage > 50) {
+                            // More than half visible → call your function
+                            print(
+                              "Card ${index + 1} is visible: ${"myorder.user.name"}",
+                            );
+                            updateRoute(myorder.pickupLatitude, myorder.pickupLongitude,
+                                myorder.dropLatitude, myorder.dropLongitude);
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Center(
+                            child: Container(
+                              width: w - 50,
+                              height: 200,
+                              child: InkWell(
+                                onTap: (){
+                                  print(myorder.status);
+                                  updateRoute(myorder.pickupLatitude, myorder.pickupLongitude,
+                                      myorder.dropLatitude, myorder.dropLongitude);
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text("Book this Booking"),
+                                        content: const Text("Book Route for this Customer? You sure could take this Booking from the Customer"),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () async {
+                                              try {
+                                                final s = await BookingFunction
+                                                    .attachDriverBooking(
+                                                    id: myorder.id
+                                                        .toString());
+                                                final d = await BookingFunction
+                                                    .updateBookingStatus(
+                                                    bookingId: myorder.id
+                                                        .toString(),
+                                                    status: BookingStatus.arriving);
+                                                Navigator.pop(context);
+                                                Send.message(context, "Success : ${d} ${s}",true);
+                                                getupcoming();
+                                              }catch(e){
+                                                print(e);
+                                                Navigator.pop(context);
+                                                Send.message(context, "$e",false);
+                                              }
+                                            },
+                                            child: const Text("OK"),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: const Text("CANCEL"),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                child: Container(
+                                  width: w - 60,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 8.0,
+                                          top: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            CircleAvatar(
+                                              backgroundColor:
+                                              Colors.yellow,
+                                              child: Text(
+                                                myorder.waitingHours,
+                                              ),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Column(
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                              mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  "${myorder.waitingHours}hr Trip ${capitalizeFirst(myorder.bookingType)}",
+                                                  style: TextStyle(
+                                                    fontWeight:
+                                                    FontWeight.w800,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "${getTimeLeft(myorder.bookingTime.toString())}",
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Spacer(),
+                                            Container(
+                                              width: w/5+10,
+                                              height: 30,
+                                              color: Global.bg,
+                                              child: Center(child:
+                                              Text("Accept",style: TextStyle(color: Colors.white,fontSize: 10),)),
+                                            ),
+                                            SizedBox(width: 9,),
+                                          ],
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          SizedBox(width: 15),
+                                          Container(
+                                            width: 20,
+                                            height: 90,
+                                            child: Column(
+                                              mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                              children: [
+                                                CircleAvatar(
+                                                  backgroundColor:
+                                                  Colors.green,
+                                                  radius: 6,
+                                                ),
+                                                SizedBox(width: 2),
+                                                Container(
+                                                  width: 2,
+                                                  height: 25,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black,
+                                                    borderRadius:
+                                                    BorderRadius.circular(
+                                                      5,
+                                                    ),
+                                                  ),
+                                                ),
+                                                CircleAvatar(
+                                                  backgroundColor:
+                                                  Colors.white,
+                                                  radius: 10,
+                                                  child: Icon(
+                                                    Icons.location_on_sharp,
+                                                    color: Colors.red,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(width: 15),
+                                          Container(
+                                            width:
+                                            w - 15 - 20 - 20 - 20 - 40,
+                                            height: 90,
+                                            child: Column(
+                                              mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  "${myorder.pickupLocation} ",
+                                                  maxLines: 1,
+                                                  style: TextStyle(
+                                                    fontWeight:
+                                                    FontWeight.w800,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Container(
+                                                  width:
+                                                  w -
+                                                      15 -
+                                                      20 -
+                                                      20 -
+                                                      20 -
+                                                      30 -
+                                                      20,
+                                                  height: 2,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors
+                                                        .grey
+                                                        .shade200,
+                                                    borderRadius:
+                                                    BorderRadius.circular(
+                                                      15,
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  "${myorder.dropLocation} ",
+                                                  maxLines: 1,
+                                                  style: TextStyle(
+                                                    fontWeight:
+                                                    FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 15.0,
+                                          top: 1,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_month,
+                                              color: Colors.black,
+                                              size: 15,
+                                            ),
+                                            Text(
+                                              " Sheduled for : ${formatDateTime(myorder.bookingTime.toString())}",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            SizedBox(width: 15,),
+                                            Icon(
+                                              Icons.screen_rotation_alt_outlined,
+                                              color: Colors.black,
+                                              size: 15,
+                                            ),
+                                            t(
+                                              "${calculateDistanceKm(myorder.dropLatitude, myorder.dropLongitude, myorder.pickupLatitude,myorder.pickupLongitude)} km",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 15.0,
+                                          top: 5,
+                                          bottom: 15,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.access_time_filled,
+                                              color: Colors.grey,
+                                              size: 13,
+                                            ),
+                                            t(
+                                              "${myorder.waitingHours} Hour",
+                                            ),
+                                            Icon(
+                                              Icons.add_road_sharp,
+                                              color: Colors.grey,
+                                              size: 13,
+                                            ),
+                                            t(
+                                              "${capitalizeFirst(myorder.bookingType)}",
+                                            ),
+                                            Icon(
+                                              Icons.safety_check_outlined,
+                                              color: Colors.grey,
+                                              size: 13,
+                                            ),
+                                            t("Status : ${myorder.status}"),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                )):(myorders.isEmpty
                     ? SizedBox()
                     : Container(
                         width: w,
                         height: 200,
                         child: ListView.builder(
-                          itemCount: orders.length,
+                          itemCount: myorders.length,
                           scrollDirection: Axis.horizontal,
                           itemBuilder: (BuildContext context, int index) {
-                            OrderModel myorder = orders[index];
+                            mine.OrderModel myorder = myorders[index];
                             return VisibilityDetector(
                               key: Key('order-$index'),
                               onVisibilityChanged: (info) {
@@ -363,32 +793,8 @@ class _HomeState extends State<Home> {
                                     width: w - 50,
                                     height: 200,
                                     child: InkWell(
-                                      onTap: (){
-                                        updateRoute(myorder.pickupLatitude, myorder.pickupLongitude,
-                                            myorder.dropLatitude, myorder.dropLongitude);
-                                        showDialog(
-                                          context: context,
-                                          builder: (BuildContext context) {
-                                            return AlertDialog(
-                                              title: const Text("Book this Booking"),
-                                              content: const Text("Book Route for this Customer? You sure could take this Booking from the Customer"),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context); // close dialog
-                                                  },
-                                                  child: const Text("OK"),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context);
-                                                  },
-                                                  child: const Text("CANCEL"),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
+                                      onTap: () async {
+                                        Navigator.push(context,MaterialPageRoute(builder: (_)=>MyFull(id: myorder.id.toString())));
                                       },
                                       child: Container(
                                         width: w - 60,
@@ -408,8 +814,7 @@ class _HomeState extends State<Home> {
                                                   CircleAvatar(
                                                     backgroundColor:
                                                         Colors.yellow,
-                                                    child: Text(
-                                                      myorder.user.name
+                                                    child: Text(myorder.user.name
                                                           .substring(0, 1)
                                                           .substring(0, 1),
                                                     ),
@@ -438,11 +843,11 @@ class _HomeState extends State<Home> {
                                                   ),
                                                   Spacer(),
                                                   Container(
-                                                    width: w/5+10,
+                                                    width: w/5+15,
                                                     height: 30,
                                                     color: Global.bg,
                                                     child: Center(child:
-                                                    Text("Accept (${myorder.waitingHours}hr)",style: TextStyle(color: Colors.white,fontSize: 10),)),
+                                                    Text("${myorder.status}",style: TextStyle(color: Colors.white,fontSize: 10),)),
                                                   ),
                                                   SizedBox(width: 9,),
                                                 ],
@@ -619,7 +1024,7 @@ class _HomeState extends State<Home> {
                             );
                           },
                         ),
-                      ),
+                      )),
                 online
                     ? SizedBox()
                     : InkWell(
@@ -845,10 +1250,11 @@ class _HomeState extends State<Home> {
         full = false;
       });
       if (online) {
-        await gets();
+        await getmyorders();
         setState(() {});
       } else {
         orders = [];
+        myorders=[];
         setState(() {});
       }
     });
@@ -894,6 +1300,38 @@ class _HomeState extends State<Home> {
       return formatter.format(localTime);
     } catch (e) {
       return "Error";
+    }
+  }
+
+  String getTimeLeft(String dateTimeString) {
+    try {
+      DateTime target = DateTime.parse(dateTimeString).toLocal();
+      DateTime now = DateTime.now();
+
+      Duration diff = target.difference(now);
+
+      if (diff.isNegative) {
+        return "Already Passed Due date";
+      }
+
+      int days = diff.inDays;
+      int hours = diff.inHours % 24;
+      int minutes = diff.inMinutes % 60;
+
+      // Optional: months (approximate, since month lengths vary)
+      int months = (days / 30).floor();
+      days = days % 30;
+
+      List<String> parts = [];
+
+      if (months > 0) parts.add("$months month${months > 1 ? 's' : ''}");
+      if (days > 0) parts.add("$days day${days > 1 ? 's' : ''}");
+      if (hours > 0) parts.add("$hours hour${hours > 1 ? 's' : ''}");
+      if (minutes > 0) parts.add("$minutes minute${minutes > 1 ? 's' : ''}");
+
+      return parts.isEmpty ? "Less than a minute left" : "${parts.join(', ')} left";
+    } catch (e) {
+      return "Invalid Date";
     }
   }
 

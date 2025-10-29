@@ -62,6 +62,7 @@ dependencies:
   flutter_polyline_points: ^3.1.0
   url_launcher: ^6.3.2
   cloud_firestore: ^4.17.5
+  geolocator: ^14.0.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

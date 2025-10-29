@@ -5,18 +5,42 @@
 
 import 'package:dio/dio.dart';
 import 'package:dod_partner/api.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../login/bloc/login/view.dart';
 
 
 class BookingFunction{
 
+  static final Dio dio = Dio(
+    BaseOptions(validateStatus: (status) => status != null && status < 500),
+  );
 
-  Future<Response?> updateBookingStatus({
-    required String bookingId,
-    required String status,
-    required String driverId,
-    required String authToken,
+  static Future<String?> attachDriverBooking({
+    required String id,
   }) async {
-    // ✅ Valid allowed statuses
+
+    try {
+      final response = await dio.put(
+        '${Api.apiurl}driver/booking-update/$id',
+        options: Options(
+          headers: {"Authorization": "Bearer ${UserModel.token}"},
+        ),
+      );
+
+      print('Driver Booking Update Response: ${response.data}');
+      return '✅ Booking status updated successfully ';
+    } on DioException catch (e) {
+      print('Error updating driver booking: $e');
+      return e.toString();
+    }
+  }
+
+
+  static Future<String?> updateBookingStatus({
+    required String bookingId,
+    required BookingStatus status,
+  }) async {
     const allowedStatuses = [
       'open',
       'accepted',
@@ -27,40 +51,74 @@ class BookingFunction{
       'over',
       'payment-over-due',
       'completed',
-      'issue-exists',
-      'canceled',
     ];
 
-    // ✅ Check if status is valid
-    if (!allowedStatuses.contains(status)) {
+    if (!allowedStatuses.contains(status.apiValue)) {
       throw ArgumentError(
-          'Invalid status "$status". Must be one of: ${allowedStatuses.join(", ")}');
+          'Invalid status "${status.apiValue}". Must be one of: ${allowedStatuses.join(", ")}');
     }
 
-    final dio = Dio();
-
     try {
-      final response = await dio.post(
-        '${Api.apiurl}booking-status',
+      print("|---------------------------------");
+      final response = await dio.put(
+        '${Api.apiurl}driver/booking-update/${bookingId}',
         options: Options(
-          headers: {
-            'Authorization': authToken, // Pass token directly
-          },
+          headers: {"Authorization": "Bearer ${UserModel.token}"},
         ),
         data: {
           'booking_id': bookingId,
-          'status': status,
-          'driver_id': driverId,
+          'status': status.apiValue,
+          'driver_id': UserModel.user.id,
         },
       );
-
-      print('✅ Booking status updated successfully: ${response.data}');
-      return response;
+      print(response);
+      return '✅ Booking status updated successfully';
     } on DioException catch (e) {
-      // Log or rethrow error
       print('❌ Error updating booking status: ${e.response?.data ?? e.message}');
-      return e.response;
+      return e.toString();
     }
   }
 
+}
+
+enum BookingStatus {
+  open,
+  accepted,
+  confirmed,
+  arriving,
+  arrived,
+  inTrip,
+  over,
+  paymentOverDue,
+  completed,
+  issueExists,
+  canceled,
+}
+extension BookingStatusExtension on BookingStatus {
+  String get apiValue {
+    switch (this) {
+      case BookingStatus.open:
+        return 'open';
+      case BookingStatus.accepted:
+        return 'accepted';
+      case BookingStatus.confirmed:
+        return 'confirmed';
+      case BookingStatus.arriving:
+        return 'arriving';
+      case BookingStatus.arrived:
+        return 'arrived';
+      case BookingStatus.inTrip:
+        return 'in-trip';
+      case BookingStatus.over:
+        return 'over';
+      case BookingStatus.paymentOverDue:
+        return 'payment-over-due';
+      case BookingStatus.completed:
+        return 'completed';
+      case BookingStatus.issueExists:
+        return 'issue-exists';
+      case BookingStatus.canceled:
+        return 'canceled';
+    }
+  }
 }
