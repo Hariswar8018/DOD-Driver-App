@@ -1,6 +1,8 @@
 
 
 
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:dod_partner/login/bloc/login/view.dart';
 import 'package:dod_partner/main.dart' show MyHomePage;
@@ -9,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../api.dart';
 import '../global/global.dart';
+import '../login/locationpermission.dart';
 
 class Update extends StatefulWidget {
 
@@ -88,55 +91,50 @@ class _UpdateState extends State<Update> {
             setState(() {
               on=true;
             });
-            final Dio dio = Dio(
-              BaseOptions(
-                validateStatus: (status) => status != null && status < 500,
-              ),
-            );
             try {
-              print("------------------------------------------------>");
-              final response = await dio.patch(
-                  Api.apiurl + "profile-update",
-                  data: widget.isemail?{
-                    "name":UserModel.user.name,
-                    "email": controller.text,
-                    "mobile": "${FirebaseAuth.instance.currentUser!.phoneNumber}",
-                  }:{
-                    "name":controller.text,
-                    "email": UserModel.user.email,
-                    "mobile": "${FirebaseAuth.instance.currentUser!
-                        .phoneNumber}",
-                  },
+              final dio = Dio(
+                BaseOptions(
+                  responseType: ResponseType.plain,
+                  validateStatus: (s) => true,
+                ),
+              );
+              final formData = FormData.fromMap({
+                "email": controller.text,
+                "user_photo": null,
+              });
+              final response = await dio.post(
+                "https://dod.brandeducer.host/api/driver/profile",
+                data: formData,
                 options: Options(
                   headers: {
                     "Authorization": "Bearer ${UserModel.token}",
+                    "Accept": "application/json",
                   },
                 ),
               );
-              print(response);
-              print(response.statusMessage);
-              print(response.statusCode);
-              if (response.statusCode == 201||response.statusCode == 200) {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>MyHomePage(title: "")));
-                Send.message(
-                    context, "Success", true);
-                setState(() {
-                  on=false;
-                });
+
+              final raw = response.data.toString();
+              print("RAW RESPONSE: $raw");
+
+              // remove leading "11"
+              final cleaned = raw.replaceFirst(RegExp(r'^\s*\d+'), '');
+              print("CLEANED RESPONSE: $cleaned");
+
+              final decoded = jsonDecode(cleaned);
+
+              if (response.statusCode == 200) {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>LocationPermission()));
+                Send.message(context, "Profile Updated!", true);
+              } else if (response.statusCode == 422) {
+                // validation error
+                final errorMessage = decoded["errors"]?["email"]?[0] ?? "Validation error";
+                Send.message(context, errorMessage, false);
               } else {
-                Send.message(
-                    context, "Error ${response.statusMessage}", false);
-                setState(() {
-                  on=false;
-                });
+                Send.message(context, decoded["message"] ?? "Unknown error", false);
               }
-            }catch(e){
-              print(e);
-              Send.message(
-                  context, "Error ${e}", false);
-              setState(() {
-                on=false;
-              });
+
+            } catch (e) {
+              Send.message(context, "Something went wrong: $e", false);
             }
           },
           child: Container(

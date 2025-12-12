@@ -2,6 +2,8 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:dod_partner/global/contacts.dart';
+import 'package:dod_partner/global/gethelp.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -73,16 +75,13 @@ class _CreateSellerState extends State<CreateSeller> {
                 SizedBox(height: 10,),
                 InkWell(
                   onTap: () async {
-                    final Uri _url = Uri.parse('tel:+918269669272');
-                    if (!await launchUrl(_url)) {
-                      throw Exception('Could not launch $_url');
-                    }
+                    Navigator.push(context, MaterialPageRoute(builder: (_)=>GetHelp()));
                   },
                   child: Row(
                     children: [
                       SizedBox(width: 10,),
                       Icon(Icons.support_agent,color: Colors.white,),SizedBox(width: 5,),
-                      Text(" Support at : +91-8269669272",style: TextStyle(color: Colors.white),),SizedBox(width: 5,),
+                      Text(" Support at : +91-${Contacts.phone}",style: TextStyle(color: Colors.white),),SizedBox(width: 5,),
                       Icon(Icons.keyboard_arrow_down_outlined,color: Colors.white,),
                       SizedBox(width: 10,),
                       progress?CircularProgressIndicator():SizedBox(),
@@ -241,7 +240,7 @@ class _CreateSellerState extends State<CreateSeller> {
     if (gstback == null) return "Please select Aadhaar back image";
     if (idcard == null) return "Please select license image";
     if (attorney == null) return "Please select profile photo";
-    return null; // All fields are filled
+    return null;
   }
 
   Future<void> registerDriver() async {

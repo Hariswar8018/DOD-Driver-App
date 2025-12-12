@@ -4,18 +4,23 @@ class UserData {
   final String firebaseId;
   final String fcmToken;
   final String name;
+  final String? username;
   final String email;
   final String mobile;
   final String platformType;
   final String referralNumber;
   final String role;
   final String online;
-  final String latitude;
-  final String longitude;
-  final String joined;
-  final String lastOnline;
+  final String? latitude;
+  final String? longitude;
+  final String? joined;
+  final String? lastOnline;
   final String createdAt;
   final String updatedAt;
+  final String coins;
+  final String walletBalance;
+  final String status;
+  final String? photo;
   final Profile? profile;
 
   UserData({
@@ -24,18 +29,23 @@ class UserData {
     required this.firebaseId,
     required this.fcmToken,
     required this.name,
+    this.username,
     required this.email,
     required this.mobile,
     required this.platformType,
     required this.referralNumber,
     required this.role,
     required this.online,
-    required this.latitude,
-    required this.longitude,
-    required this.joined,
-    required this.lastOnline,
+    this.latitude,
+    this.longitude,
+    this.joined,
+    this.lastOnline,
     required this.createdAt,
     required this.updatedAt,
+    required this.coins,
+    required this.walletBalance,
+    required this.status,
+    this.photo,
     this.profile,
   });
 
@@ -46,24 +56,30 @@ class UserData {
       firebaseId: json['firebase_id'] ?? '',
       fcmToken: json['fcm_token'] ?? '',
       name: json['name'] ?? '',
+      username: json['username'],
       email: json['email'] ?? '',
       mobile: json['mobile'] ?? '',
       platformType: json['platform_type'] ?? '',
       referralNumber: json['referral_number'] ?? '',
       role: json['role'] ?? '',
-      online: json['online'] ?? '',
-      latitude: json['latitude'] ?? '',
-      longitude: json['longitude'] ?? '',
-      joined: json['joined'] ?? '',
-      lastOnline: json['last_online'] ?? '',
+      online: json['online']?.toString() ?? '0',
+      latitude: json['latitude']?.toString(),
+      longitude: json['longitude']?.toString(),
+      joined: json['joined']?.toString(),
+      lastOnline: json['last_online']?.toString(),
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
+      coins: json['coins']?.toString() ?? '0',
+      walletBalance: json['wallet_balance']?.toString() ?? '0.00',
+      status: json['status'] ?? '',
+      photo: json['photo'],
       profile: json['profile'] != null
           ? Profile.fromJson(json['profile'])
           : null,
     );
   }
 }
+
 
 class Profile {
   final int id;

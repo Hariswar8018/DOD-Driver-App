@@ -53,6 +53,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> login() async {
     emit(AuthLoading());
+    print("Attempting login...");
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -60,33 +61,66 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthFailure("Firebase user not found"));
         return;
       }
+      String mobile = user.phoneNumber!;
 
-      final response = await dio.post(
-        Api.apiurl + "driver/login",
+      final checkResponse = await dio.post(
+        "${Api.apiurl}driver/check-mobile",
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+        data: {
+          "mobile": mobile,
+        },
+      );
+
+      print("Check Mobile Status: ${checkResponse.statusCode}");
+      print("Check Mobile Response: ${checkResponse.data}");
+
+      if (checkResponse.statusCode != 200 ||
+          checkResponse.data["success"] == false) {
+        emit(AuthNeedsRegistration());
+        return;
+      }
+
+      // 2️⃣ LOGIN
+      final loginResponse = await dio.post(
+        "${Api.apiurl}driver/login",
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
         data: {
           "provider": "mobile",
           "firebase_id": user.uid,
-          "mobile": "${user.phoneNumber}",
+          "mobile": mobile,
           "fcm_token": "hINSACXDBIACFNBHUIFCVNBFBCV",
         },
       );
 
-      print("=================================");
-      print(response.statusCode);
-      print(response.statusMessage);
-      if (response.statusCode == 200) {
-        final authResponse = AuthResponse.fromJson(response.data);
+      print("Login response: ${loginResponse.data}");
+
+      if (loginResponse.statusCode == 200 &&
+          loginResponse.data["status"] == true) {
+        final authResponse = AuthResponse.fromJson(loginResponse.data);
+
+        // save token and user data
         UserModel.token = authResponse.token;
-        UserModel.user=authResponse.data;
+        UserModel.user = authResponse.data;
+
         emit(AuthSuccess(authResponse.data));
+        print("Login successful");
+        return;
       }
-      else if (response.statusCode == 404 || response.statusCode == 401) {
+
+      if (loginResponse.statusCode == 404 ||
+          loginResponse.statusCode == 401) {
         emit(AuthNeedsRegistration());
+        return;
       }
-      else {
-        emit(AuthFailure("Login failed: ${response.statusCode} - ${response.statusMessage}"));
-      }
+
+      emit(AuthFailure("Login failed: ${loginResponse.statusCode}"));
+
     } catch (e) {
+      print("Exception: $e");
       emit(AuthFailure("Exception: $e"));
     }
   }

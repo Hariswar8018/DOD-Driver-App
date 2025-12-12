@@ -1,12 +1,13 @@
 
 import 'dart:async';
+import 'dart:io';
 
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dod_partner/home/navigation.dart' show Navigation;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'firebase_options.dart';
 import 'login/locationpermission.dart' show LocationPermission;
@@ -49,6 +50,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
 
   void initState(){
+    checkAdminOnStatus();
     if(FirebaseAuth.instance.currentUser==null){
       Timer(Duration(seconds: 3),(){
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>Onboarding()));
@@ -81,4 +83,36 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+  Future<void> checkAdminOnStatus() async {
+    try {
+      // Admin / Admin document
+      final doc = await FirebaseFirestore.instance
+          .collection("Admin")
+          .doc("Admin")
+          .get();
+
+      if (!doc.exists) {
+        print("Admin/Admin document does not exist.");
+        return;
+      }
+
+      final data = doc.data();
+      if (data == null) {
+        return;
+      }
+
+      // 'on' is expected to be a boolean
+      final bool? on = data["on"] as bool?;
+
+      if (on == true) {
+        print("Admin turned ON → Closing app...");
+        exit(0);
+      } else {
+        print("Admin is OFF → Do nothing");
+      }
+    } catch (e) {
+      print("Error checking admin status: $e");
+    }
+  }
+
 }

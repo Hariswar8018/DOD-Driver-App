@@ -28,7 +28,7 @@ class _MyRidesState extends State<MyRides> {
     );
     try {
       final response = await dio.get(
-        Api.apiurl + "user-bookings",
+        Api.apiurl + "driver/bookings",
         options: Options(
           headers: {"Authorization": "Bearer ${UserModel.token}"},
         ),
@@ -103,9 +103,7 @@ class _MyRidesState extends State<MyRides> {
                                 CircleAvatar(
                                   backgroundColor:
                                   Colors.yellow,
-                                  child: Text(myorder.user.name
-                                      .substring(0, 1)
-                                      .substring(0, 1),
+                                  child: Text(myorder.hours
                                   ),
                                 ),
                                 SizedBox(width: 8),
@@ -136,7 +134,7 @@ class _MyRidesState extends State<MyRides> {
                                   height: 30,
                                   color: Global.bg,
                                   child: Center(child:
-                                  Text("Accept (${myorder.waitingHours}hr)",style: TextStyle(color: Colors.white,fontSize: 10),)),
+                                  Text("Accepted ${myorder.hours}hr",style: TextStyle(color: Colors.white,fontSize: 10),)),
                                 ),
                                 SizedBox(width: 9,),
                               ],
@@ -284,7 +282,7 @@ class _MyRidesState extends State<MyRides> {
                                   size: 13,
                                 ),
                                 t(
-                                  "${myorder.waitingHours} Hour",
+                                  "${myorder.hours} Hour",
                                 ),
                                 Icon(
                                   Icons.add_road_sharp,
@@ -292,14 +290,14 @@ class _MyRidesState extends State<MyRides> {
                                   size: 13,
                                 ),
                                 t(
-                                  "${capitalizeFirst(myorder.bookingType)}",
+                                    myorder.bookingType=="monthly"?"Daily Driver":"${capitalizeFirst(myorder.bookingType)}",
                                 ),
                                 Icon(
                                   Icons.safety_check_outlined,
                                   color: Colors.grey,
                                   size: 13,
                                 ),
-                                t("Status : ${myorder.status}"),
+                                t("Status : ${capitalizeFirst(myorder.status)}"),
                               ],
                             ),
                           ),

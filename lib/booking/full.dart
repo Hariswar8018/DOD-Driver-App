@@ -1,11 +1,17 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dod_partner/booking/booking_function.dart';
+import 'package:dod_partner/global/animations.dart';
+import 'package:dod_partner/global/orderhelper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_widget/google_maps_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,6 +19,10 @@ import '../api.dart';
 import '../global/global.dart';
 import '../login/bloc/login/view.dart';
 import '../model/my_ordermodel.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:async';
+import 'dart:ui' as ui;
 
 class MyFull extends StatefulWidget {
   String id ;
@@ -24,10 +34,21 @@ class MyFull extends StatefulWidget {
 
 class _MyFullState extends State<MyFull> {
 
+  Future<void> getr() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('id', widget.id);
+  }
   void initState(){
-
+    getr();
     getmyorders();
   }
+  Future<Uint8List> getBytesFromAsset(String path, int width) async {
+    ByteData data = await rootBundle.load(path);
+    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: width);
+    ui.FrameInfo fi = await codec.getNextFrame();
+    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  }
+
   Future<void> getmyorders() async {
     final Dio dio = Dio(
       BaseOptions(validateStatus: (status) => status != null && status < 500),
@@ -49,10 +70,7 @@ class _MyFullState extends State<MyFull> {
         // ✅ Correct parsing
         order = OrderModel.fromJson(response.data['data']);
         setState(() {});
-
         updateRoute(order!.pickupLatitude, order!.pickupLongitude, order!.dropLatitude, order!.dropLongitude);
-        getCurrentLocation();
-        showUserLocation();
       } else {
         print("❌ Error: ${response.statusMessage}");
       }
@@ -60,9 +78,11 @@ class _MyFullState extends State<MyFull> {
       print("Error during API call: $e");
     }
   }
+
   GoogleMapController? mapController;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
+
   Future<void> updateRoute(double lat1, double lon1, double lat2, double lon2) async {
     try {
       final start = LatLng(lat1, lon1);
@@ -77,7 +97,7 @@ class _MyFullState extends State<MyFull> {
       _markers.add(Marker(
         markerId: const MarkerId('end'),
         position: end,
-        infoWindow: const InfoWindow(title: "End Point"),
+                infoWindow: const InfoWindow(title: "End Point"),
       ));
       PolylinePoints polylinePoints = PolylinePoints(apiKey: Api.googlemap);
       PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
@@ -110,66 +130,104 @@ class _MyFullState extends State<MyFull> {
             lon1 > lon2 ? lon1 : lon2,
           ),
         ),
-        50, // padding
+        50,
       ));
+      setState(() {
+
+      });
     }catch(e){
       print(e);
     }
   }
 
-  Future<Position> getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
+  final _firestore = FirebaseFirestore.instance;
+  StreamSubscription<Position>? _positionStream;
 
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error(
-          'Location permissions are permanently denied, cannot request.');
-    }
+  GoogleMapController? _mapController;
+  Marker? _bikeMarker;
 
-    return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+  LatLng? _lastPosition;
+
+
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    _positionStream?.cancel();
+    super.dispose();
   }
-  LatLng? userLocation;
-
-  Future<void> showUserLocation() async {
-    try {
-      Position position = await getCurrentLocation();
-      userLocation = LatLng(position.latitude, position.longitude);
-
-      _markers.add(
-        Marker(
-          markerId: MarkerId('user'),
-          position: userLocation!,
-          infoWindow: InfoWindow(title: "You are here"),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        ),
-      );
-
-      mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(userLocation!, 15),
-      );
-
-      setState(() {});
-    } catch (e) {
-      print("Error getting location: $e");
-    }
+  void get(){
+    showDialog(
+      context: context,
+      barrierDismissible: false, // prevents closing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero, // 👈 makes it rectangular
+          ),
+          backgroundColor: Colors.white,
+          title:  Text(
+            "Collected ₹${order!.amount} ?",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text("You sure that you collected the Amount by Cash"),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero, // keep buttons rectangular too
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "No, Stop",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero, // keep buttons rectangular too
+                ),
+              ),
+              onPressed: () async {
+                try {
+                  String str = sendstring(order!.status);
+                  final d = await BookingFunction
+                      .updateBookingStatus(
+                      bookingId: order!.id.toString(),
+                      status: str
+                  );
+                  await getmyorders();
+                  Navigator.pop(context);
+                  Send.message(context, "Success : ${d} ",true);
+                  setState(() {
+                    progress=false;
+                  });
+                }catch(e){
+                  print(e);
+                  Send.message(context, "$e",false);
+                  setState(() {
+                    progress=false;
+                  });
+                }
+              },
+              child: const Text("Yes, I Confirm ",style: TextStyle(color: Colors.white),),
+            ),
+          ],
+        );
+      },
+    );
   }
 
 
-  OrderModel? order ;
+  OrderModel? order ; bool zoom =false;
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
@@ -182,6 +240,49 @@ class _MyFullState extends State<MyFull> {
         iconTheme: IconThemeData(
             color: Colors.white
         ),
+        leading: IconButton(onPressed: (){
+          showDialog(
+            context: context,
+            barrierDismissible: false, // prevents closing by tapping outside
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero, // 👈 makes it rectangular
+                ),
+                backgroundColor: Colors.white,
+                title: const Text(
+                  "Confirm Close ?",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                content: const Text("Are you sure you want to Close the Ride? Your Location Service will also be Closed"),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false); // user chose "No"
+                    },
+                    child: const Text(
+                      "No",
+                      style: TextStyle(color: Colors.green),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero, // keep buttons rectangular too
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop(true);
+                      Navigator.pop(context);
+                    },
+                    child: const Text("Yes",style: TextStyle(color: Colors.white),),
+                  ),
+                ],
+              );
+            },
+          );
+        }, icon: Icon(Icons.close,color: Colors.white,)),
         title: Text("Booking ID #${widget.id}",style: TextStyle(color: Colors.white),),
       ),
       body: order==null?Shimmer.fromColors(
@@ -212,7 +313,7 @@ class _MyFullState extends State<MyFull> {
         children: [
           Container(
             width: w,
-            height: h/2-90,
+            height: zoom? h-260: h/2-90,
             child: GoogleMap(
               initialCameraPosition: const CameraPosition(
                 target: LatLng(23.0225, 72.5714),
@@ -220,14 +321,61 @@ class _MyFullState extends State<MyFull> {
               ),
               onMapCreated: (controller) {
                 mapController = controller;
-                showUserLocation(); // show user location when map is ready
               },
               markers: _markers,
               polylines: _polylines,
             )
           ),
           progress?LinearProgressIndicator():SizedBox(),
-          Container(
+          zoom?Container(
+            width: w,
+            height: 100,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  backgroundColor:
+                  Colors.yellow,
+                  child: Text(order!.user.name
+                      .substring(0, 1)
+                      .substring(0, 1),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                  mainAxisAlignment:
+                  MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      order!.user.name,
+                      style: TextStyle(
+                          fontWeight:
+                          FontWeight.w800,fontSize: 17
+                      ),
+                    ),
+                    Text(
+                      order!.user.mobile,
+                      style: TextStyle(
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                Spacer(),
+                InkWell(
+                    onTap: (){
+                      setState(() {
+                        zoom=!zoom;
+                      });
+                    },
+                    child: Icon(Icons.arrow_upward,color: Colors.blue,size: 30,)),
+                SizedBox(width: 10,),
+              ],
+            ),
+          ):Container(
             width: w,
             height: h/2-90,
             child: Padding(
@@ -274,7 +422,14 @@ class _MyFullState extends State<MyFull> {
                             ],
                           ),
                           Spacer(),
-                          SizedBox(width: 1,),
+                          InkWell(
+                              onTap: (){
+                                setState(() {
+                                  zoom=!zoom;
+                                });
+                              },
+                              child: Icon(Icons.arrow_downward_sharp,color: Colors.red,size: 30,)),
+                          SizedBox(width: 10,),
                         ],
                       ),
                     ),
@@ -347,7 +502,7 @@ class _MyFullState extends State<MyFull> {
                             size: 13,
                           ),
                           t(
-                            "${order!.waitingHours} Hour",
+                            "${order!.hours} Hour",
                           ),
                           Icon(
                             Icons.add_road_sharp,
@@ -355,7 +510,7 @@ class _MyFullState extends State<MyFull> {
                             size: 13,
                           ),
                           t(
-                            "${capitalizeFirst(order!.bookingType)}",
+                            order?.recurringBooking!=null?"Daily Driver  ":"${capitalizeFirst(order!.bookingType)}",
                           ),
                           Icon(
                             Icons.screen_rotation_alt_outlined,
@@ -370,7 +525,7 @@ class _MyFullState extends State<MyFull> {
                       ),
                     ),
                     Text("  Timing : ",style: TextStyle(fontWeight: FontWeight.w400,),),
-                    Row(
+                    order?.recurringBooking==null?Row(
                       children: [
                         SizedBox(width: 15),
                         Container(
@@ -451,7 +606,96 @@ class _MyFullState extends State<MyFull> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                "${formatDateTimehr(order!.bookingTime.toString(),order!.waitingHours)} ",
+                                "${formatDateTimee(order!.bookingTime.toString())} ",
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontWeight:
+                                  FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ):Row(
+                      children: [
+                        SizedBox(width: 15),
+                        Container(
+                          width: 20,
+                          height: 90,
+                          child: Column(
+                            mainAxisAlignment:
+                            MainAxisAlignment.center,
+                            crossAxisAlignment:
+                            CrossAxisAlignment.center,
+                            children: [
+                              CircleAvatar(
+                                backgroundColor:
+                                Colors.green,
+                                radius: 6,
+                              ),
+                              SizedBox(width: 2),
+                              Container(
+                                width: 2,
+                                height: 25,
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius:
+                                  BorderRadius.circular(
+                                    5,
+                                  ),
+                                ),
+                              ),
+                              CircleAvatar(
+                                backgroundColor:
+                                Colors.white,
+                                radius: 10,
+                                child: Icon(
+                                  Icons.location_on_sharp,
+                                  color: Colors.red,
+                                  size: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 15),
+                        Container(
+                          width:
+                          w - 15 - 20 - 40 ,
+                          height: 90,
+                          child: Column(
+                            mainAxisAlignment:
+                            MainAxisAlignment.center,
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${order!.recurringBooking!.startDate} from ${order!.recurringBooking!.routes.first.pickupTime} to ${l(order!.recurringBooking!.routes.first.pickupTime)}",
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontWeight:
+                                  FontWeight.w800,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Container(
+                                width:
+                                w - 15 - 20 - 40,
+                                height: 2,
+                                decoration: BoxDecoration(
+                                  color: Colors
+                                      .grey
+                                      .shade200,
+                                  borderRadius:
+                                  BorderRadius.circular(
+                                    15,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                "${order!.recurringBooking!.endDate} from ${order!.recurringBooking!.routes.first.pickupTime} to ${l(order!.recurringBooking!.routes.first.pickupTime)}",
                                 maxLines: 1,
                                 style: TextStyle(
                                   fontWeight:
@@ -566,6 +810,14 @@ class _MyFullState extends State<MyFull> {
         ],
       ),
       persistentFooterButtons: [
+        order==null?Shimmer.fromColors(
+            baseColor: Colors.grey.shade300,
+            highlightColor: Colors.grey.shade100,
+            child: Container(
+              width: w,height: 82,
+              color: Colors.white,
+            )
+        ):
         Container(
           width: w,
           height: 82,
@@ -578,24 +830,93 @@ class _MyFullState extends State<MyFull> {
                 ],
               ),
               SizedBox(height: 3,),
-              InkWell(
+              order!.status=="completed"?dg(w):InkWell(
+                onLongPress: (){
+                  String str = sendstring(order!.status);
+                  print(str);
+                },
                 onTap: () async {
-                  String currentStatusStr = order!.status;
-                  BookingStatus? currentStatus = bookingStatusFromString(currentStatusStr);
-                  BookingStatus? nextStatus;
-                  if (currentStatus != null) {
-                    nextStatus = getNextStatus(currentStatus);
+                  print(order!.status);
+                  String str = sendstring(order!.status);
+                  if(order!.status=="arrived"){
+                    await getmyorders();
+                    Send.message(context, "Status Refreshed Successful. Please check now the status of Order!",true);
                   }
-                  if (nextStatus != null) {
+                  if(order!.status=="payment-over-due"){
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                          backgroundColor: Colors.white,
+                          title:  Text(
+                            "Please Collect ₹${order!.amount}",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          content: const Text("Please Collect the Payment in cash from the User. If the User have done payment online, refresh the page to check status"),
+                          actions: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero, // keep buttons rectangular too
+                                ),
+                              ),
+                              onPressed: () async {
+                                await getmyorders();
+                                Navigator.pop(context);
+                                Send.message(context,"Updated", true);
+                              },
+                              child: const Text(
+                                "User Paid by Razorpay, Refresh",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero, // keep buttons rectangular too
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                get();
+                              },
+                              child: const Text("Yes, User Paid in Cash ",style: TextStyle(color: Colors.white),),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.zero, // keep buttons rectangular too
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text("Close",style: TextStyle(color: Colors.white),),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                    return ;
+                  }
+                  if (str!="in-trip") {
                     setState(() {
                       progress=true;
                     });
+                    print(str);
                     try {
                       final d = await BookingFunction
                           .updateBookingStatus(
-                          bookingId: order!.id
-                              .toString(),
-                          status: BookingStatus.arriving);
+                          bookingId: order!.id.toString(),
+                          status: str);
+                      await getmyorders();
                       Send.message(context, "Success : ${d} ",true);
                       setState(() {
                         progress=false;
@@ -614,16 +935,20 @@ class _MyFullState extends State<MyFull> {
                     });
                     print("Already at final status");
                   }
-
                 },
                 child: Container(
                   width: w,
                   height: 50,
                  decoration: BoxDecoration(
-                   color: Colors.red,
+                   color:order!.status=="arrived"?Colors.grey: Colors.red,
                    borderRadius: BorderRadius.circular(10)
                  ),
-                  child: Row(
+                  child: order!.status=="arrived"?Center(
+                    child: Text("Waiting for Customer Verification"
+                        ,style: TextStyle(
+                            fontWeight: FontWeight.w900,color: Colors.white,fontSize: 19
+                        )),
+                  ):Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       getStatusIcon(order!.status),
@@ -639,6 +964,47 @@ class _MyFullState extends State<MyFull> {
           ),
         )
       ],
+    );
+  }
+
+  String l(String timeString) {
+    try {
+      int hoursToAdd = int.parse(order!.hours);
+
+      // Parse the time "8:00 AM"
+      DateFormat format = DateFormat("h:mm a");
+      DateTime time = format.parse(timeString);
+
+      // Add the hours
+      DateTime newTime = time.add(Duration(hours: hoursToAdd));
+
+      // Format back to "1:00 PM"
+      return format.format(newTime);
+    } catch (e) {
+      return "Error";
+    }
+  }
+
+
+
+  Widget dg(double w){
+    return Container(
+      width: w,
+      height: 50,
+      decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10)
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          getStatusIcon(order!.status),
+          SizedBox(width: 5,),
+          Text("Mark "+"${(getNextStatusString(order!.status))}",style: TextStyle(
+              fontWeight: FontWeight.w900,color: Colors.white,fontSize: 19
+          ),),
+        ],
+      ),
     );
   }
   bool progress = false;
@@ -672,13 +1038,13 @@ class _MyFullState extends State<MyFull> {
   }
   String? getNextStatusString(String currentStatus) {
     const linearStatuses = [
+      'pending',
       'open',
       'accepted',
       'confirmed',
       'arriving',
       'arrived',
       'in-trip',
-      'over',
       'payment-over-due',
       'completed',
       'issue-exists',
@@ -697,7 +1063,30 @@ class _MyFullState extends State<MyFull> {
     return next[0].toUpperCase() + next.substring(1);
   }
 
-
+  String sendstring(String status) {
+    switch (status) {
+      case 'pending':
+        return 'accepted';
+      case 'open':
+        return 'accepted';
+      case 'accepted':
+        return 'confirmed';
+      case 'confirmed':
+        return 'arriving';
+      case 'arriving':
+        return 'arrived';
+      case 'arrived':
+        return 'in-trip';
+      case 'in-trip':
+        return 'over';
+      case 'over':
+        return 'payment-over-due';
+      case 'payment-over-due':
+        return 'completed';
+      default:
+        return 'issue-exist'; // fallback
+    }
+  }
   BookingStatus? bookingStatusFromString(String status) {
     try {
       return BookingStatus.values.firstWhere(
@@ -722,10 +1111,23 @@ class _MyFullState extends State<MyFull> {
     BookingStatus.issueExists,
     BookingStatus.canceled,
   ];
+
   BookingStatus? getNextStatus(BookingStatus current) {
-    int index = linearStatuses.indexOf(current);
-    if (index == -1 || index == linearStatuses.length - 1) return null;
-    return linearStatuses[index + 1];
+    if(current==BookingStatus.open){
+      return BookingStatus.confirmed;
+    }else if(current==BookingStatus.confirmed||current==BookingStatus.accepted){
+      return BookingStatus.arriving;
+    }else if(current==BookingStatus.arriving){
+      return BookingStatus.arrived;
+    }else if(current==BookingStatus.arrived){
+      return BookingStatus.inTrip;
+    }else if(current==BookingStatus.inTrip){
+      return BookingStatus.paymentOverDue;
+    }else if(current==BookingStatus.paymentOverDue){
+      return BookingStatus.over;
+    }else {
+      return BookingStatus.completed;
+    }
   }
 
 
@@ -775,6 +1177,25 @@ class _MyFullState extends State<MyFull> {
       return "Error";
     }
   }
+  String formatDateTimee(String dateTime) {
+    try {
+      DateTime utcTime = DateTime.parse(dateTime);
+
+      DateTime localTime = utcTime.toLocal();
+
+      final DateFormat timeFormatter = DateFormat('h:mm a');
+      final DateFormat formatter = DateFormat('dd MMMM');
+
+      String s = timeFormatter.format(localTime);
+      String s1 = formatter.format(localTime);
+
+      String ge = l(s);
+      return "${s1}, $ge";
+    } catch (e) {
+      return "Error";
+    }
+  }
+
   String calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
     const double earthRadiusKm = 6371; // Earth's radius in kilometers
 

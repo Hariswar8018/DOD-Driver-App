@@ -5,9 +5,16 @@ import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:dod_partner/booking/booking_function.dart';
 import 'package:dod_partner/booking/my_rides.dart';
+import 'package:dod_partner/global/gethelp.dart';
 import 'package:dod_partner/global/global.dart';
+import 'package:dod_partner/global/orderhelper.dart';
+import 'package:dod_partner/home/listen.dart';
+import 'package:dod_partner/home/review.dart';
+import 'package:dod_partner/main.dart';
+import 'package:dod_partner/second_pages/reviews.dart';
 import 'package:dod_partner/second_pages/say_no.dart';
 import 'package:dod_partner/second_pages/user_screen.dart';
+import 'package:dod_partner/second_pages/wallet.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -19,6 +26,7 @@ import 'package:visibility_detector/visibility_detector.dart'
 
 import '../api.dart';
 import '../booking/full.dart';
+import '../global/contacts.dart';
 import '../login/bloc/login/view.dart';
 import '../model/booking_response.dart';
 import '../model/mybooking.dart';
@@ -69,7 +77,7 @@ class _HomeState extends State<Home> {
     );
     try {
       final response = await dio.get(
-        Api.apiurl + "user-bookings",
+        Api.apiurl + "driver/bookings",
         options: Options(
           headers: {"Authorization": "Bearer ${UserModel.token}"},
         ),
@@ -97,7 +105,6 @@ class _HomeState extends State<Home> {
     }
   }
   List<mine.OrderModel> myorders = [];
-
 
   Future<void> getupcoming() async {
     final Dio dio = Dio(
@@ -196,11 +203,102 @@ class _HomeState extends State<Home> {
     return "$time   $date";
   }
 
+  Widget c(double w)=>Container(
+    width: w,
+    height: 120,
+    color: Colors.black,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Spacer(),
+        Padding(
+          padding: const EdgeInsets.only(left: 15.0),
+          child: Text("Create Driver Profile",style: TextStyle(fontWeight: FontWeight.w800,fontSize: 22,color: Colors.white),),
+        ),
+        SizedBox(height: 10,),
+        InkWell(
+          onTap: () async {
+            Navigator.push(context, MaterialPageRoute(builder: (_)=>GetHelp()));
+          },
+          child: Row(
+            children: [
+              SizedBox(width: 10,),
+              Icon(Icons.support_agent,color: Colors.white,),SizedBox(width: 5,),
+              Text(" Support at : +91-${Contacts.phone}",style: TextStyle(color: Colors.white),),SizedBox(width: 5,),
+              Icon(Icons.keyboard_arrow_down_outlined,color: Colors.white,),
+              SizedBox(width: 10,),
+              progress?CircularProgressIndicator():SizedBox(),
+              SizedBox(width: 5,),
+              Spacer(),
+              InkWell(
+                  onTap: ()async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          title: Text("Log Out", style: const TextStyle(fontWeight: FontWeight.bold)),
+                          content: Text("You sure to Log Out ? Your changes may not be saved"),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text("Cancel", style: TextStyle(color: Colors.blue)),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              onPressed: () async {
+                                await FirebaseAuth.instance.signOut();
+                                await FirebaseAuth.instance.signOut();
+                                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>MyHomePage(title: "",)));
+                              },
+                              child: const Text("Confirm",style: TextStyle(color: Colors.white),),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Icon(Icons.logout,color: Colors.white,)),SizedBox(width: 10,),
+            ],
+          ),
+        ),
+        SizedBox(height: 14,)
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
     double h = MediaQuery.of(context).size.height;
-    return Scaffold(
+    return UserModel.user.status=="pending"?Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        flexibleSpace: c(w),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Center(child: Image.asset("assets/end.webp",width: w/2,)),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text("Your Driver Profile is under Review",style: TextStyle(fontWeight: FontWeight.w800),),
+            ),
+          ),
+          Center(child: Text(textAlign: TextAlign.center,"It will take a few days to Review and Update your Profile. Thanks for your Patience",style: TextStyle(fontWeight: FontWeight.w400),)),
+        ],
+      ),
+    ):Scaffold(
       key: _scaffoldKey,
       drawer: Drawer(
         child: Container(
@@ -234,8 +332,7 @@ class _HomeState extends State<Home> {
               ),
               InkWell(
                 onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (_)=>Say_No(
-                      str: "My Ratings", description: "No Customer have Rate you")));
+                  Navigator.push(context, MaterialPageRoute(builder: (_)=>Reviews()));
                 },
                 child: list(
                   Icon(Icons.star, color: Colors.white, size: size),
@@ -244,8 +341,7 @@ class _HomeState extends State<Home> {
               ),
               InkWell(
                 onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (_)=>Say_No(
-                      str: "My Wallets", description: "You don't have any Wallets Coins")));
+                  Navigator.push(context, MaterialPageRoute(builder: (_)=>Walley()));
                 },
                 child: list(
                   Icon(
@@ -257,21 +353,8 @@ class _HomeState extends State<Home> {
                 ),
               ),
               InkWell(
-                onTap: (){
-                  Navigator.push(context, MaterialPageRoute(builder: (_)=>Say_No(
-                      str: "FAQs", description: "We haven't add amy FAQs")));
-                },
-                child: list(
-                  Icon(Icons.question_answer, color: Colors.white, size: size),
-                  "FAQs",
-                ),
-              ),
-              InkWell(
                 onTap: () async {
-                  final Uri _url = Uri.parse('tel:+918269669272');
-                  if (!await launchUrl(_url)) {
-                  throw Exception('Could not launch $_url');
-                  }
+                  Navigator.push(context, MaterialPageRoute(builder: (_)=>GetHelp()));
                 },
                 child: list(
                   Icon(Icons.support_agent, color: Colors.white, size: size),
@@ -290,9 +373,12 @@ class _HomeState extends State<Home> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                        child: CircleAvatar(
+                        child: UserModel.user.photo==null?CircleAvatar(
                           radius: 30,
-                          backgroundColor: Colors.blue,
+                          backgroundImage: NetworkImage("https://t4.ftcdn.net/jpg/00/84/67/19/360_F_84671939_jxymoYZO8Oeacc3JRBDE8bSXBWj0ZfA9.jpg"),
+                        ):CircleAvatar(
+                          radius: 30,
+                          backgroundImage: NetworkImage(UserModel.user.photo!),
                         ),
                       ),
                       Column(
@@ -475,7 +561,6 @@ class _HomeState extends State<Home> {
                           double visiblePercentage =
                               info.visibleFraction * 100;
                           if (visiblePercentage > 50) {
-                            // More than half visible → call your function
                             print(
                               "Card ${index + 1} is visible: ${"myorder.user.name"}",
                             );
@@ -512,7 +597,7 @@ class _HomeState extends State<Home> {
                                                     .updateBookingStatus(
                                                     bookingId: myorder.id
                                                         .toString(),
-                                                    status: BookingStatus.arriving);
+                                                    status: "accepted");
                                                 Navigator.pop(context);
                                                 Send.message(context, "Success : ${d} ${s}",true);
                                                 getupcoming();
@@ -554,7 +639,7 @@ class _HomeState extends State<Home> {
                                               backgroundColor:
                                               Colors.yellow,
                                               child: Text(
-                                                myorder.waitingHours,
+                                                "${myorder.hours}",
                                               ),
                                             ),
                                             SizedBox(width: 8),
@@ -565,7 +650,7 @@ class _HomeState extends State<Home> {
                                               MainAxisAlignment.center,
                                               children: [
                                                 Text(
-                                                  "${myorder.waitingHours}hr Trip ${capitalizeFirst(myorder.bookingType)}",
+                                                  "${myorder.hours}hr Trip ${capitalizeFirst(myorder.bookingType=="monthly"?"Daily Driver":myorder.bookingType)}",
                                                   style: TextStyle(
                                                     fontWeight:
                                                     FontWeight.w800,
@@ -733,7 +818,7 @@ class _HomeState extends State<Home> {
                                               size: 13,
                                             ),
                                             t(
-                                              "${myorder.waitingHours} Hour",
+                                              "${myorder.hours} Hour",
                                             ),
                                             Icon(
                                               Icons.add_road_sharp,
@@ -741,7 +826,7 @@ class _HomeState extends State<Home> {
                                               size: 13,
                                             ),
                                             t(
-                                              "${capitalizeFirst(myorder.bookingType)}",
+                                                myorder.bookingType=="monthly"?"Daily Driver":"${capitalizeFirst(myorder.bookingType)}",
                                             ),
                                             Icon(
                                               Icons.safety_check_outlined,
@@ -778,7 +863,6 @@ class _HomeState extends State<Home> {
                                 double visiblePercentage =
                                     info.visibleFraction * 100;
                                 if (visiblePercentage > 50) {
-                                  // More than half visible → call your function
                                   print(
                                     "Card ${index + 1} is visible: ${myorder.user.name}",
                                   );
@@ -847,7 +931,7 @@ class _HomeState extends State<Home> {
                                                     height: 30,
                                                     color: Global.bg,
                                                     child: Center(child:
-                                                    Text("${myorder.status}",style: TextStyle(color: Colors.white,fontSize: 10),)),
+                                                    Text("${capitalizeFirst(myorder.status)}",style: TextStyle(color: Colors.white,fontSize: 10),)),
                                                   ),
                                                   SizedBox(width: 9,),
                                                 ],
@@ -995,7 +1079,7 @@ class _HomeState extends State<Home> {
                                                     size: 13,
                                                   ),
                                                   t(
-                                                    "${myorder.waitingHours} Hour",
+                                                    "${myorder.hours} Hour",
                                                   ),
                                                   Icon(
                                                     Icons.add_road_sharp,
@@ -1010,7 +1094,7 @@ class _HomeState extends State<Home> {
                                                     color: Colors.grey,
                                                     size: 13,
                                                   ),
-                                                  t("Status : ${myorder.status}"),
+                                                  t("Status : ${capitalizeFirst(myorder.status)}"),
                                                 ],
                                               ),
                                             ),
@@ -1147,6 +1231,14 @@ class _HomeState extends State<Home> {
     );
   }
 
+  String sendwaiting(mine.OrderModel order){
+    if(order.recurringBooking!=null){
+      return OrderHelper.rec(order.recurringBooking!).toString();
+    }
+    return order.waitingHours;
+  }
+
+
   String calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
     const double earthRadiusKm = 6371; // Earth's radius in kilometers
 
@@ -1170,6 +1262,7 @@ class _HomeState extends State<Home> {
   double _degreesToRadians(double degree) {
     return degree * pi / 180;
   }
+
   bool googlemaps = false;
 
   GoogleMapController? mapController;
@@ -1252,9 +1345,11 @@ class _HomeState extends State<Home> {
       if (online) {
         await getmyorders();
         setState(() {});
+       LocationService.startLocationUpdates();
       } else {
         orders = [];
         myorders=[];
+        LocationService.stopLocationUpdates();
         setState(() {});
       }
     });
@@ -1290,18 +1385,16 @@ class _HomeState extends State<Home> {
 
   String formatDateTime(String dateTime) {
     try {
-      print("---------------------This $dateTime");
       DateTime utcTime = DateTime.parse(dateTime);
-
-      // Convert to local time (e.g., IST)
       DateTime localTime = utcTime.toLocal();
 
-      final DateFormat formatter = DateFormat('dd MMMM, hh:mm a');
+      final formatter = DateFormat('dd MMM, hh:mm a', 'en_US');
       return formatter.format(localTime);
     } catch (e) {
       return "Error";
     }
   }
+
 
   String getTimeLeft(String dateTimeString) {
     try {
@@ -1351,7 +1444,5 @@ class _HomeState extends State<Home> {
     if (text.isEmpty) return text;
     return text[0].toUpperCase() + text.substring(1);
   }
-
-
 
 }

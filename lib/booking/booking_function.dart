@@ -39,7 +39,7 @@ class BookingFunction{
 
   static Future<String?> updateBookingStatus({
     required String bookingId,
-    required BookingStatus status,
+    required String status,
   }) async {
     const allowedStatuses = [
       'open',
@@ -53,11 +53,6 @@ class BookingFunction{
       'completed',
     ];
 
-    if (!allowedStatuses.contains(status.apiValue)) {
-      throw ArgumentError(
-          'Invalid status "${status.apiValue}". Must be one of: ${allowedStatuses.join(", ")}');
-    }
-
     try {
       print("|---------------------------------");
       final response = await dio.put(
@@ -67,12 +62,12 @@ class BookingFunction{
         ),
         data: {
           'booking_id': bookingId,
-          'status': status.apiValue,
+          'status': status,
           'driver_id': UserModel.user.id,
         },
       );
       print(response);
-      return '✅ Booking status updated successfully';
+      return '✅ Booking status updated successfully ${response.statusCode} with ${response.statusMessage}';
     } on DioException catch (e) {
       print('❌ Error updating booking status: ${e.response?.data ?? e.message}');
       return e.toString();

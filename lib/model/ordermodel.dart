@@ -1,15 +1,13 @@
-
-
-
 class OrderModel {
   final int id;
   final int userId;
+  final int? recurringBookingId;
   final int? driverId;
   final int? carId;
   final int? couponId;
   final String bookingType;
   final String tripType;
-  final String waitingHours;
+  final String? waitingHours;
   final DateTime? bookingTime;
   final double distanceKm;
   final String pickupLocation;
@@ -25,16 +23,18 @@ class OrderModel {
   final String status;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final String hours;
 
   OrderModel({
     required this.id,
     required this.userId,
+    this.recurringBookingId,
     this.driverId,
     this.carId,
     this.couponId,
     required this.bookingType,
     required this.tripType,
-    required this.waitingHours,
+    this.waitingHours,
     this.bookingTime,
     required this.distanceKm,
     required this.pickupLocation,
@@ -50,18 +50,21 @@ class OrderModel {
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    required this.hours
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     return OrderModel(
       id: _parseInt(json['id']),
       userId: _parseInt(json['user_id']),
+      recurringBookingId: _tryInt(json['recurring_booking_id']),
       driverId: _tryInt(json['driver_id']),
+      hours: json['hours']?.toString() ?? "1",
       carId: _tryInt(json['car_id']),
       couponId: _tryInt(json['coupon_id']),
       bookingType: json['booking_type'] ?? '',
       tripType: json['trip_type'] ?? '',
-      waitingHours: json['waiting_hours']?.toString() ?? '',
+      waitingHours: json['waiting_hours']?.toString(),
       bookingTime: DateTime.tryParse(json['booking_time'] ?? ''),
       distanceKm: _parseDouble(json['distance_km']),
       pickupLocation: json['pickup_location'] ?? '',
@@ -88,27 +91,4 @@ class OrderModel {
 
   static double _parseDouble(dynamic value) =>
       value is double ? value : double.tryParse(value.toString()) ?? 0.0;
-}
-
-class User {
-  final int id;
-  final String name;
-  final String email;
-  final String mobile;
-
-  User({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.mobile,
-  });
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: OrderModel._parseInt(json['id']),
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      mobile: json['mobile']?.toString() ?? '',
-    );
-  }
 }
